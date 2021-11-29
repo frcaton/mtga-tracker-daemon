@@ -1,0 +1,21 @@
+# ===================================== #
+# Visual Studio / MonoDevelop generated #
+# ===================================== #
+obj/
+bin/
+*.userprefs
+*.pidb
+*.suo
+*.user
+.vscode/
+
+# ============ #
+# OS generated #
+# ============ #
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

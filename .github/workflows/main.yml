@@ -19,7 +19,14 @@ jobs:
       - name: Build
         run: dotnet build ./src/mtga-tracker-daemon
       - name: Zip the Build
-        run: zip -r MtgaTrackerDaemon-${{ matrix.os }} ./src/mtga-tracker-daemon/bin/Debug/net4.8/
+        run: | 
+          release_name="MtgaTrackerDaemon-${{ matrix.os }}"
+
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            7z a -tzip "${release_name}.zip" ./src/mtga-tracker-daemon/bin/Debug/net4.8/
+          else
+            tar czvf "${release_name}.tar.gz" ./src/mtga-tracker-daemon/bin/Debug/net4.8/
+          fi
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -27,7 +34,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.run_number }}
-          release_name: Release ${{ github.ref }}
+          release_name: Release ${{ github.run_number }}
           body: New Release.
           draft: false
           prerelease: false

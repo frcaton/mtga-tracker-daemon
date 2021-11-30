@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        dotnet-version: [ '4.8.x' ]
+        dotnet-version: [ '5.0.x' ]
 
     steps:
       - uses: actions/checkout@v2
@@ -27,7 +27,7 @@ jobs:
           dotnet build ./src/mtga-tracker-daemon
 
           # Pack files
-          if [ "${{ matrix.target }}" == "win-x64" ]; then
+          if [ "${{ matrix.target }}" == "win-latest" ]; then
             7z a -tzip "${release_name}.zip" "./${release_name}/*"
           else
             tar czvf "${release_name}.tar.gz" "$release_name"

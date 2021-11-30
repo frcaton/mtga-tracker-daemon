@@ -1,0 +1,93 @@
+name: build and release
+
+on:
+  push:
+    branches:
+      - "master"
+
+jobs:
+  build-windows:
+    runs-on: [ windows-latest ]
+    strategy:
+      matrix:
+        dotnet-version: [ '5.0.x' ]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v1.7.2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+
+      - name: Build
+        run: dotnet publish ./src/mtga-tracker-daemon -r win-x64 --self-contained
+
+      - name: Zip the Build
+        run: 7z a -tzip "mtga-tracker-daemon-${{ runner.os }}.zip" "./src/mtga-tracker-daemon/bin/Debug/net5.0/win-x64/publish"
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.run_number }}-${{ runner.os }}
+          release_name: Release ${{ github.run_number }} ${{ runner.os }}
+          body: ${{ runner.os }} v${{ github.run_number }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./mtga-tracker-daemon-${{ runner.os }}.zip
+          asset_name: mtga-tracker-daemon-${{ runner.os }}.zip
+          asset_content_type: application/zip
+  build-linux:
+    runs-on: [ubuntu-latest]
+    strategy:
+      matrix:
+        dotnet-version: [ '5.0.x' ]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v1.7.2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+
+      - name: Build
+        run: dotnet publish ./src/mtga-tracker-daemon -r linux-x64 --self-contained
+
+      - name: Add deploy artifacts
+        run: |
+          mkdir -p deploy/linux/bin
+          mv -v src/mtga-tracker-daemon/bin/Debug/net5.0/linux-x64/publish/* deploy/linux/bin
+
+      - name: Zip the Build
+        run: tar czvf "mtga-tracker-daemon-${{ runner.os }}.tar.gz" -C deploy/linux/ .
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.run_number }}-${{ runner.os }}
+          release_name: Release ${{ github.run_number }} ${{ runner.os }}
+          body: ${{ runner.os }} v${{ github.run_number }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./mtga-tracker-daemon-${{ runner.os }}.tar.gz
+          asset_name: mtga-tracker-daemon-${{ runner.os }}.tar.gz
+          asset_content_type: application/zip

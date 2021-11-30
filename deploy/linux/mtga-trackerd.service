@@ -1,5 +1,5 @@
 [Unit]
-Description = MTG Arena tracked daemon
+Description = MTG Arena tracker daemon
 
 [Service]
 User = root

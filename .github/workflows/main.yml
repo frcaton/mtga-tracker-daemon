@@ -20,6 +20,5 @@ jobs:
         with:
           tag_name: ${{ github.run_number }}
           release_name: Release ${{ github.run_number }}
-          body: v${{ github.run_number }}
           draft: false
           prerelease: false

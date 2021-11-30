@@ -214,10 +214,20 @@ namespace MTGATrackerDaemon
 
         private Process GetMTGAProcess()
         {
+            string mtgaProcessName;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                mtgaProcessName = "MTGA";
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                mtgaProcessName = "MTGA.exe";
+            }
+
             Process[] processes = Process.GetProcesses();
             foreach(Process process in processes) 
             {
-                if (process.ProcessName == "MTGA.exe")
+                if (process.ProcessName == mtgaProcessName)
                 {
                     return process;
                 }

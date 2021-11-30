@@ -3,6 +3,7 @@ name: Build and upload
 on:
   release:
     types:
+      - published
       - created
 
 jobs:

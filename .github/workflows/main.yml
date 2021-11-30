@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        dotnet-version: [ '4.8.x' ]
+        dotnet-version: [ '5.0.x' ]
 
     steps:
       - uses: actions/checkout@v2
@@ -19,7 +19,7 @@ jobs:
       - name: Build
         run: dotnet build ./src/mtga-tracker-daemon
       - name: Zip the Build
-        run: zip -r MtgaTrackerDaemon ./src/mtga-tracker-daemon/bin/Release/net4.8/ 
+        run: zip -r MtgaTrackerDaemon-${{ matrix.os }} ./src/mtga-tracker-daemon/bin/Release/net4.8/ 
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -37,6 +37,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: ./MtgaTrackerDaemon.zip
-          asset_name: MtgaTrackerDaemon.zip
+          asset_path: ./MtgaTrackerDaemon-${{ matrix.os }}.zip
+          asset_name: MtgaTrackerDaemon-${{ matrix.os }}.zip
           asset_content_type: application/zip

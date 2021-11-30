@@ -19,14 +19,9 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          # Define some variables for things we need
           tag=$(git describe --tags --abbrev=0)
           release_name="MtgaTrackerDaemon-$tag-${{ matrix.target }}"
-
-          # Build everything
           dotnet build ./src/mtga-tracker-daemon
-
-          # Pack files
           if [ "${{ matrix.target }}" == "win-latest" ]; then
             7z a -tzip "${release_name}.zip" "./${release_name}/*"
           else

@@ -76,7 +76,7 @@
 
             if (mappingIndex < 0)
             {
-                throw new Exception("Mono module not found");
+                throw new Exception($"Module {moduleName} not found");
             }
 
             IntPtr startingAddress = this.mappings[mappingIndex].StartAddress;
@@ -99,7 +99,7 @@
 
             if (mappingIndex < 0)
             {
-                throw new Exception("Mono module not found");
+                throw new Exception($"Module {moduleName} not found");
             }
 
             return this.mappings[mappingIndex].ModuleName;

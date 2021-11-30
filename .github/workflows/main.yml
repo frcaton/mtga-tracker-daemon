@@ -19,12 +19,11 @@ jobs:
       - name: Build
         run: dotnet build ./src/mtga-tracker-daemon
       - name: Zip the Build
-        run: | 
-          if ("${{ matrix.os }}" == "windows-latest")
-            7z a -tzip "mtga-tracker-daemon-${{ matrix.os }}.zip" "./src/mtga-tracker-daemon/bin/Debug/net4.8/"
-          else
-            tar czvf "mtga-tracker-daemon-${{ matrix.os }}.tar.gz" "./src/mtga-tracker-daemon/bin/Debug/net4.8/"
-          fi
+        if: matrix.os == 'ubuntu-latest'
+        run: tar czvf "mtga-tracker-daemon-${{ matrix.os }}.tar.gz" "./src/mtga-tracker-daemon/bin/Debug/net4.8/"
+      - name: Zip the Build
+        if: matrix.os == 'windows-latest'
+        run: 7z a -tzip "mtga-tracker-daemon-${{ matrix.os }}.zip" "./src/mtga-tracker-daemon/bin/Debug/net4.8/"
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1

@@ -223,6 +223,10 @@ namespace MTGATrackerDaemon
             {
                 mtgaProcessName = "MTGA.exe";
             }
+            else
+            {
+                throw new NotSupportedException("Platform not supported");
+            }
 
             Process[] processes = Process.GetProcesses();
             foreach(Process process in processes) 

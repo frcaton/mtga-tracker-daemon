@@ -1,4 +1,4 @@
-name: build and release
+name: Build and upload
 
 on:
   release:

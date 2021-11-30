@@ -214,27 +214,34 @@ namespace MTGATrackerDaemon
 
         private Process GetMTGAProcess()
         {
-            string mtgaProcessName;
+            Process[] processes = Process.GetProcesses();
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                mtgaProcessName = "MTGA";
+                foreach(Process process in processes) 
+                {
+                    if (process.ProcessName == "MTGA")
+                    {
+                        return process;
+                    }
+                }
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                mtgaProcessName = "MTGA.exe";
+                foreach(Process process in processes) 
+                {
+                    if (process.ProcessName == "MTGA.exe")
+                    {
+                        string maps = File.ReadAllText($"/proc/{process.Id}/maps");
+                        if (!string.IsNullOrWhiteSpace(maps)) 
+                        {
+                            return process;
+                        }
+                    }
+                }
             }
             else
             {
                 throw new NotSupportedException("Platform not supported");
-            }
-
-            Process[] processes = Process.GetProcesses();
-            foreach(Process process in processes) 
-            {
-                if (process.ProcessName == mtgaProcessName)
-                {
-                    return process;
-                }
             }
 
             return null;

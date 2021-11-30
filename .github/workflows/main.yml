@@ -19,7 +19,7 @@ jobs:
       - name: Build
         run: dotnet build ./src/mtga-tracker-daemon
       - name: Zip the Build
-        run: zip -r MtgaTrackerDaemon-${{ matrix.os }} ./src/mtga-tracker-daemon/bin/Release/net4.8/ 
+        run: zip -r MtgaTrackerDaemon-${{ matrix.os }} ./src/mtga-tracker-daemon/bin/Debug/net4.8/
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1

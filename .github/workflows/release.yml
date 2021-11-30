@@ -1,0 +1,69 @@
+name: build and release
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  build-windows:
+    runs-on: [ windows-latest ]
+    strategy:
+      matrix:
+        dotnet-version: [ '5.0.x' ]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v1.7.2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+
+      - name: Build
+        run: dotnet publish ./src/mtga-tracker-daemon -r win-x64 --self-contained
+
+      - name: Zip the Build
+        run: 7z a -tzip "mtga-tracker-daemon-${{ runner.os }}.zip" "./src/mtga-tracker-daemon/bin/Debug/net5.0/win-x64/publish"
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./mtga-tracker-daemon-${{ runner.os }}.zip
+          asset_name: mtga-tracker-daemon-${{ runner.os }}.zip
+          asset_content_type: application/zip
+  build-linux:
+    runs-on: [ubuntu-latest]
+    strategy:
+      matrix:
+        dotnet-version: [ '5.0.x' ]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v1.7.2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+
+      - name: Build
+        run: dotnet publish ./src/mtga-tracker-daemon -r linux-x64 --self-contained
+
+      - name: Add deploy artifacts
+        run: |
+          mkdir -p deploy/linux/bin
+          mv -v src/mtga-tracker-daemon/bin/Debug/net5.0/linux-x64/publish/* deploy/linux/bin
+
+      - name: Zip the Build
+        run: tar czvf "mtga-tracker-daemon-${{ runner.os }}.tar.gz" -C deploy/linux/ .
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./mtga-tracker-daemon-${{ runner.os }}.tar.gz
+          asset_name: mtga-tracker-daemon-${{ runner.os }}.tar.gz
+          asset_content_type: application/zip

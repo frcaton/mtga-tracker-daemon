@@ -18,16 +18,16 @@ jobs:
           dotnet-version: ${{ matrix.dotnet-version }}
       - name: Build Linux
         if: matrix.os == 'ubuntu-latest'
-        run: dotnet publish ./src/mtga-tracker-daemon -r ubuntu.16.04-x64 --self-contained false
+        run: dotnet publish ./src/mtga-tracker-daemon -r linux-x64 --self-contained
       - name: Build Windows
         if: matrix.os == 'windows-latest'
-        run: dotnet publish ./src/mtga-tracker-daemon --self-contained
+        run: dotnet publish ./src/mtga-tracker-daemon -r win-x64 --self-contained
       - name: Zip the Build
         if: matrix.os == 'ubuntu-latest'
-        run: tar czvf "mtga-tracker-daemon-${{ runner.os }}.tar.gz" "src/mtga-tracker-daemon/bin/Debug/net5.0/ubuntu.16.04-x64/publish"
+        run: tar czvf "mtga-tracker-daemon-${{ runner.os }}.tar.gz" "src/mtga-tracker-daemon/bin/Debug/net5.0/linux-x64/publish"
       - name: Zip the Build
         if: matrix.os == 'windows-latest'
-        run: 7z a -tzip "mtga-tracker-daemon-${{ runner.os }}.zip" "./src/mtga-tracker-daemon/bin/Debug/net5.0/publish"
+        run: 7z a -tzip "mtga-tracker-daemon-${{ runner.os }}.zip" "./src/mtga-tracker-daemon/bin/Debug/net5.0/win-x64/publish"
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1

@@ -1,0 +1,10 @@
+[Unit]
+Description = MTG Arena tracked daemon
+
+[Service]
+User = root
+ExecStart = /usr/share/mtga-tracker-daemon/mtga-tracker-daemon
+Restart = always
+
+[Install]
+WantedBy = multi-user.target

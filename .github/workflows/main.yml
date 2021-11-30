@@ -17,4 +17,27 @@ jobs:
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
       - name: Build
-        run: dotnet build ./src/mtga-tracker-daemon
+        shell: bash
+        run: |
+          # Define some variables for things we need
+          tag=$(git describe --tags --abbrev=0)
+          release_name="MtgaTrackerDaemon-$tag-${{ matrix.target }}"
+
+          # Build everything
+          dotnet build ./src/mtga-tracker-daemon
+
+          # Pack files
+          if [ "${{ matrix.target }}" == "win-x64" ]; then
+            7z a -tzip "${release_name}.zip" "./${release_name}/*"
+          else
+            tar czvf "${release_name}.tar.gz" "$release_name"
+          fi
+
+          # Delete output directory
+          rm -r "$release_name"
+      - name: Publish
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "MtgaTrackerDaemon*"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

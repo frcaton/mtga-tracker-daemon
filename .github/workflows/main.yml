@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        dotnet-version: [ '5.0.x' ]
+        dotnet-version: [ '4.8.x' ]
 
     steps:
       - uses: actions/checkout@v2
@@ -17,22 +17,26 @@ jobs:
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
       - name: Build
-        shell: bash
-        run: |
-          tag=$(git describe --tags --abbrev=0)
-          release_name="MtgaTrackerDaemon-$tag-${{ matrix.target }}"
-          dotnet build ./src/mtga-tracker-daemon
-          if [ "${{ matrix.target }}" == "win-latest" ]; then
-            7z a -tzip "${release_name}.zip" "./${release_name}/*"
-          else
-            tar czvf "${release_name}.tar.gz" "$release_name"
-          fi
-
-          # Delete output directory
-          rm -r "$release_name"
-      - name: Publish
-        uses: softprops/action-gh-release@v1
-        with:
-          files: "MtgaTrackerDaemon*"
+        run: dotnet build ./src/mtga-tracker-daemon
+      - name: Zip the Build
+        run: zip -r MtgaTrackerDaemon ./src/mtga-tracker-daemon/bin/Release/net4.8/ 
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.run_number }}
+          release_name: Release ${{ github.ref }}
+          body: New Release.
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+          asset_path: ./MtgaTrackerDaemon.zip
+          asset_name: MtgaTrackerDaemon.zip
+          asset_content_type: application/zip

@@ -1,61 +1,25 @@
-name: dotnet package
+name: Create Release
 
-on: [push]
+on:
+  push:
+    branches:
+      - "mix-releases"
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        dotnet-version: [ '5.0.x' ]
-
+    name: Create Release
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
-        uses: actions/setup-dotnet@v1.7.2
-        with:
-          dotnet-version: ${{ matrix.dotnet-version }}
-      - name: Build Linux
-        if: matrix.os == 'ubuntu-latest'
-        run: dotnet publish ./src/mtga-tracker-daemon -r linux-x64 --self-contained
-      - name: Build Windows
-        if: matrix.os == 'windows-latest'
-        run: dotnet publish ./src/mtga-tracker-daemon -r win-x64 --self-contained
-      - name: Zip the Build
-        if: matrix.os == 'ubuntu-latest'
-        run: tar czvf "mtga-tracker-daemon-${{ runner.os }}.tar.gz" "src/mtga-tracker-daemon/bin/Debug/net5.0/linux-x64/publish"
-      - name: Zip the Build
-        if: matrix.os == 'windows-latest'
-        run: 7z a -tzip "mtga-tracker-daemon-${{ runner.os }}.zip" "./src/mtga-tracker-daemon/bin/Debug/net5.0/win-x64/publish"
+      - name: Checkout code
+        uses: actions/checkout@v2
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.run_number }}-${{ runner.os }}
-          release_name: Release ${{ github.run_number }}-${{ runner.os }}
-          body: ${{ matrix.os }} v${{ github.run_number }}
+          tag_name: ${{ github.run_number }}
+          release_name: Release ${{ github.run_number }}
+          body: v${{ github.run_number }}
           draft: false
           prerelease: false
-      - name: Upload Release Asset Windows
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./mtga-tracker-daemon-${{ runner.os }}.zip
-          asset_name: mtga-tracker-daemon-${{ runner.os }}.zip
-          asset_content_type: application/zip
-      - name: Upload Release Asset Linux
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./mtga-tracker-daemon-${{ runner.os }}.tar.gz
-          asset_name: mtga-tracker-daemon-${{ runner.os }}.tar.gz
-          asset_content_type: application/zip

@@ -20,12 +20,12 @@ jobs:
         run: dotnet build ./src/mtga-tracker-daemon
       - name: Zip the Build
         run: | 
-          release_name="MtgaTrackerDaemon-${{ matrix.os }}"
+          release_name="mtga-tracker-daemon-${{ matrix.os }}"
 
-          if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            7z a -tzip "${release_name}.zip" ./src/mtga-tracker-daemon/bin/Debug/net4.8/
+          if ("${{ matrix.os }}" == "windows-latest"); then
+            7z a -tzip "${release_name}.zip" "./src/mtga-tracker-daemon/bin/Debug/net4.8/"
           else
-            tar czvf "${release_name}.tar.gz" ./src/mtga-tracker-daemon/bin/Debug/net4.8/
+            tar czvf "${release_name}.tar.gz" "./src/mtga-tracker-daemon/bin/Debug/net4.8/"
           fi
       - name: Create Release
         id: create_release
@@ -45,8 +45,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./MtgaTrackerDaemon-${{ matrix.os }}.zip
-          asset_name: MtgaTrackerDaemon-${{ matrix.os }}.zip
+          asset_path: ./mtga-tracker-daemon-${{ matrix.os }}.zip
+          asset_name: mtga-tracker-daemon-${{ matrix.os }}.zip
           asset_content_type: application/zip
       - name: Upload Release Asset Linux
         if: matrix.os == 'linux-latest'
@@ -55,6 +55,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./MtgaTrackerDaemon-${{ matrix.os }}.tar.gz
-          asset_name: MtgaTrackerDaemon-${{ matrix.os }}.tar.gz
+          asset_path: ./mtga-tracker-daemon-${{ matrix.os }}.tar.gz
+          asset_name: mtga-tracker-daemon-${{ matrix.os }}.tar.gz
           asset_content_type: application/zip

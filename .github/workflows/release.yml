@@ -1,4 +1,4 @@
-name: build and release
+name: Build and upload
 
 on:
   push:
@@ -6,13 +6,36 @@ on:
       - "master"
 
 jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Get Version
+        id: projectversion
+        run: echo "::set-output name=version::$(node getVersion.js)"
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.projectversion.outputs.version }}
+          release_name: v${{ steps.projectversion.outputs.version }}
+          draft: false
+          prerelease: false
   build-windows:
     runs-on: [ windows-latest ]
+    needs: [ release ]
     strategy:
       matrix:
         dotnet-version: [ '5.0.x' ]
 
     steps:
+      - name: "Setup node"
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12'
       - uses: actions/checkout@v2
       - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
         uses: actions/setup-dotnet@v1.7.2
@@ -25,40 +48,39 @@ jobs:
       - name: Zip the Build
         run: 7z a -tzip "mtga-tracker-daemon-${{ runner.os }}.zip" "./src/mtga-tracker-daemon/bin/Debug/net5.0/win-x64/publish"
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Gets latest created release info
+        id: latest_release_info
+        uses: jossef/action-latest-release-info@v1.1.0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.run_number }}-${{ runner.os }}
-          release_name: Release ${{ github.run_number }} ${{ runner.os }}
-          body: ${{ runner.os }} v${{ github.run_number }}
-          draft: false
-          prerelease: false
-
+          GITHUB_TOKEN: ${{ github.token }}
+        
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ steps.latest_release_info.outputs.upload_url }}
           asset_path: ./mtga-tracker-daemon-${{ runner.os }}.zip
           asset_name: mtga-tracker-daemon-${{ runner.os }}.zip
           asset_content_type: application/zip
   build-linux:
     runs-on: [ubuntu-latest]
+    needs: [ release ]
     strategy:
       matrix:
         dotnet-version: [ '5.0.x' ]
 
     steps:
+      - name: "Setup node"
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12'
       - uses: actions/checkout@v2
       - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
         uses: actions/setup-dotnet@v1.7.2
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
-
+      
       - name: Build
         run: dotnet publish ./src/mtga-tracker-daemon -r linux-x64 --self-contained
 
@@ -70,24 +92,18 @@ jobs:
       - name: Zip the Build
         run: tar czvf "mtga-tracker-daemon-${{ runner.os }}.tar.gz" -C deploy/linux/ .
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Gets latest created release info
+        id: latest_release_info
+        uses: jossef/action-latest-release-info@v1.1.0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.run_number }}-${{ runner.os }}
-          release_name: Release ${{ github.run_number }} ${{ runner.os }}
-          body: ${{ runner.os }} v${{ github.run_number }}
-          draft: false
-          prerelease: false
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ steps.latest_release_info.outputs.upload_url }}
           asset_path: ./mtga-tracker-daemon-${{ runner.os }}.tar.gz
           asset_name: mtga-tracker-daemon-${{ runner.os }}.tar.gz
           asset_content_type: application/zip

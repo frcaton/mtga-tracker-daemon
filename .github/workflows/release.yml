@@ -90,7 +90,7 @@ jobs:
           mv -v src/mtga-tracker-daemon/bin/Debug/net5.0/linux-x64/publish/* deploy/linux/bin
 
       - name: Zip the Build
-        run: tar czvf "mtga-tracker-daemon-${{ runner.os }}.tar.gz" -C deploy/linux/ .
+        run: cd deploy/linux/ && tar czvf "../../mtga-tracker-daemon.tar.gz" -C ../linux * --transform s/publish/bin/ && cd ../..
 
       - name: Gets latest created release info
         id: latest_release_info

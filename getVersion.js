@@ -12,12 +12,10 @@ fs.readFile(csProjFile, "utf8", function (err, data) {
   if (err) {
     return console.log(err);
   }
-  var result = data.replace(
-    "<AssemblyVersion>1</AssemblyVersion>",
-    "<AssemblyVersion>" + process.argv.slice(2) + "</AssemblyVersion>"
-  );
+  
+  const versionRegexp = new RegExp("\<AssemblyVersion\>(.*)\<\/AssemblyVersion\>", "g");
 
-  fs.writeFile(csProjFile, result, "utf8", function (err) {
-    if (err) return console.log(err);
-  });
+  const match = versionRegexp.exec(data);
+
+  console.log(match[1])
 });

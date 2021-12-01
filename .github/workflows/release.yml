@@ -46,7 +46,9 @@ jobs:
         run: dotnet publish ./src/mtga-tracker-daemon -r win-x64 --self-contained
 
       - name: Zip the Build
-        run: 7z a -tzip "mtga-tracker-daemon-${{ runner.os }}.zip" "./src/mtga-tracker-daemon/bin/Debug/net5.0/win-x64/publish"
+        run: |
+          mv "./src/mtga-tracker-daemon/bin/Debug/net5.0/win-x64/publish" "./src/mtga-tracker-daemon/bin/Debug/net5.0/win-x64/bin"
+          7z a -tzip "mtga-tracker-daemon-${{ runner.os }}.zip" "./src/mtga-tracker-daemon/bin/Debug/net5.0/win-x64/publish"
 
       - name: Gets latest created release info
         id: latest_release_info

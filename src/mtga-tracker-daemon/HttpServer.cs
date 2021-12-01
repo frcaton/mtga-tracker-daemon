@@ -91,8 +91,8 @@ namespace MTGATrackerDaemon
                 }
                 else if(request.Url.AbsolutePath == "/checkForUpdates")
                 {
-                    responseJSON = "{\"result\":\"check for updates request accepted\"}";
-                    CheckForUpdates();
+                    bool updatesAvailable = CheckForUpdates();
+                    responseJSON = $"{{\"updatesAvailable\":\"{updatesAvailable.ToString().ToLower()}\"}}";
                 }
             } 
             else if (request.HttpMethod == "GET")

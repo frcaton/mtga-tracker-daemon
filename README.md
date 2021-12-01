@@ -7,12 +7,15 @@ Usage is very straightforward;
 `./mtga-tracker-daemon.exe -p 9000`
 
 ### GET /status
-Check if the MTGA process is running or not, and get its Process ID. (some apps use this to get other metrics or data like the window position and size)
+Check if the MTGA process is running or not and whether is updating itself or not, and get its Process ID.
+(some apps use this to get other metrics or data like the window position and size)
 
 Response
 ```
 {
   isRunning: Boolean,
+  daemonVersion: String,
+  updating: Boolean,
   processId: Number | -1,
 }
 ```
@@ -27,6 +30,15 @@ Response:
 }
 ```
 
+### POST /checkForUpdates
+Tells the daemon to check for updates
+
+Response:
+```
+{
+  updatesAvailable: Boolean,
+}
+```
 ### GET /cards
 Get a list (array) of all cards owned by the current player.
 

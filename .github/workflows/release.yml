@@ -28,11 +28,18 @@ jobs:
         dotnet-version: [ '5.0.x' ]
 
     steps:
+      - name: "Setup node"
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12'
       - uses: actions/checkout@v2
       - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
         uses: actions/setup-dotnet@v1.7.2
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
+
+      - name: Bump version
+        run: node bumpVersion.js ${{ github.run_number }}
 
       - name: Build
         run: dotnet publish ./src/mtga-tracker-daemon -r win-x64 --self-contained
@@ -63,17 +70,21 @@ jobs:
         dotnet-version: [ '5.0.x' ]
 
     steps:
+      - name: "Setup node"
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12'
       - uses: actions/checkout@v2
       - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
         uses: actions/setup-dotnet@v1.7.2
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
 
-      - name: Build
-        run: dotnet publish ./src/mtga-tracker-daemon -r linux-x64 --self-contained
-
       - name: Bump version
         run: node bumpVersion.js ${{ github.run_number }}
+
+      - name: Build
+        run: dotnet publish ./src/mtga-tracker-daemon -r linux-x64 --self-contained
 
       - name: Add deploy artifacts
         run: |

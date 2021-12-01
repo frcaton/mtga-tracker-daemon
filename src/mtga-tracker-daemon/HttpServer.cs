@@ -319,12 +319,10 @@ namespace MTGATrackerDaemon
             ExtractTGZ(file, tmpDir);
             
             DirectoryInfo currentDir = new DirectoryInfo(Directory.GetCurrentDirectory());
-            FileInfo[] oldFiles = currentDir.GetFiles();
-            foreach (FileInfo oldFile in oldFiles)
-            {
-                oldFile.Delete();
-            }
+            RemoveDirectoryContentsRecursive(currentDir);
+
             Copy(Path.Combine(tmpDir, "bin"), currentDir.FullName);
+            RemoveDirectoryContentsRecursive(new DirectoryInfo(tmpDir));
             Console.WriteLine("Updated correctly");
 
             string binary = Path.Combine(currentDir.FullName, "mtga-tracker-daemon");
@@ -339,6 +337,20 @@ namespace MTGATrackerDaemon
             Console.WriteLine("Restarting...");
         }
 
+        private void RemoveDirectoryContentsRecursive(DirectoryInfo directory) {
+            FileInfo[] oldFiles = directory.GetFiles();
+            foreach (FileInfo oldFile in oldFiles)
+            {
+                oldFile.Delete();
+            }
+
+            foreach(DirectoryInfo childDirectory in directory.GetDirectories())
+            {
+                RemoveDirectoryContentsRecursive(childDirectory);
+                childDirectory.Delete();
+            }
+        }
+
         private string GetLatestVersionJSON()
         {
             string url = "https://api.github.com/repos/frcaton/mtga-tracker-daemon/releases/latest";
@@ -349,7 +361,6 @@ namespace MTGATrackerDaemon
             request.UserAgent = @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36";
 
             var response = (HttpWebResponse)request.GetResponse();
-            string responseJSON;
             using (StreamReader Reader = new StreamReader(response.GetResponseStream()))
             {
                 return Reader.ReadToEnd();

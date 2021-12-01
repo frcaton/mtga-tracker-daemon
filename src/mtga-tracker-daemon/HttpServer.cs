@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Net;
+using System.Net.Http;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
@@ -12,6 +14,11 @@ using HackF5.UnitySpy.Detail;
 using HackF5.UnitySpy.Offsets;
 using HackF5.UnitySpy.ProcessFacade;
 
+using ICSharpCode.SharpZipLib.GZip;
+using ICSharpCode.SharpZipLib.Tar;
+
+using Newtonsoft.Json;
+
 namespace MTGATrackerDaemon
 {
     public class HttpServer
@@ -19,9 +26,19 @@ namespace MTGATrackerDaemon
         private HttpListener listener;
 
         private bool runServer = true;
+
+        private Version currentVersion;
+
+        private bool updating = false;
             
         public void Start(string url)
         {
+            var assembly = Assembly.GetExecutingAssembly();
+            currentVersion = assembly.GetName().Version;
+            Console.WriteLine($"Current version = {currentVersion}");
+
+            CheckForUpdates();
+
             // Create a Http server and start listening for incoming connections
             listener = new HttpListener();
             listener.Prefixes.Add(url);
@@ -41,14 +58,21 @@ namespace MTGATrackerDaemon
             // While a user hasn't visited the `shutdown` url, keep on handling requests
             while (runServer)
             {
-                // Will wait here until we hear from a connection
-                HttpListenerContext ctx = await listener.GetContextAsync();
-
-                // Peel out the requests and response objects
-                HttpListenerRequest request = ctx.Request;
-                if(request.IsLocal)
+                try
                 {
-                    await HandleRequest(request, ctx.Response);
+                    // Will wait here until we hear from a connection
+                    HttpListenerContext ctx = await listener.GetContextAsync();
+
+                    // Peel out the requests and response objects
+                    HttpListenerRequest request = ctx.Request;
+                    if(request.IsLocal)
+                    {
+                        await HandleRequest(request, ctx.Response);
+                    }
+                }
+                catch (Exception)
+                {
+
                 }
             }
         }
@@ -57,11 +81,19 @@ namespace MTGATrackerDaemon
             string responseJSON = "{\"error\":\"unsupported request\"}";
 
             // If `shutdown` url requested w/ POST, then shutdown the server after serving the page
-            if ((request.HttpMethod == "POST") && (request.Url.AbsolutePath == "/shutdown"))
+            if (request.HttpMethod == "POST")
             {
-                Console.WriteLine("Shutdown requested");
-                responseJSON = "{\"result\":\"shutdown request accepted\"}";
-                runServer = false;
+                if (request.Url.AbsolutePath == "/shutdown")
+                {
+                    Console.WriteLine("Shutdown requested");
+                    responseJSON = "{\"result\":\"shutdown request accepted\"}";
+                    runServer = false;
+                }
+                else if(request.Url.AbsolutePath == "/checkForUpdates")
+                {
+                    responseJSON = "{\"result\":\"check for updates request accepted\"}";
+                    CheckForUpdates();
+                }
             } 
             else if (request.HttpMethod == "GET")
             {
@@ -70,11 +102,11 @@ namespace MTGATrackerDaemon
                     Process mtgaProcess = GetMTGAProcess();
                     if (mtgaProcess == null)
                     {
-                        responseJSON = "{\"isRunning\":\"false\", \"processId\":-1}";
+                        responseJSON = $"{{\"isRunning\":\"false\", \"daemonVersion\":\"{currentVersion}\", \"updating\":\"{updating.ToString().ToLower()}\", \"processId\":-1}}";
                     }
                     else
                     {
-                        responseJSON = $"{{\"isRunning\":\"true\", \"processId\":{mtgaProcess.Id}}}";
+                        responseJSON = $"{{\"isRunning\":\"true\", \"daemonVersion\":\"{currentVersion}\", \"updating\":\"{updating.ToString().ToLower()}\", \"processId\":{mtgaProcess.Id}}}";
                     }
                 }
                 else if (request.Url.AbsolutePath == "/cards")
@@ -245,6 +277,111 @@ namespace MTGATrackerDaemon
             }
 
             return null;
+        }
+
+        private bool CheckForUpdates()
+        {            
+            try 
+            {
+                string latestVersionJSON = GetLatestVersionJSON();            
+                DaemonVersion latestVersion = JsonConvert.DeserializeObject<DaemonVersion>(latestVersionJSON);
+                                
+                Console.WriteLine($"Latest version = {latestVersion.TagName}");
+                if(currentVersion.CompareTo(new Version(latestVersion.TagName)) < 0)
+                {                    
+                    Task.Run(() => Update(latestVersion));
+                    return true;
+                }
+            } 
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Could not get latest version {ex}");
+            }
+            return false;
+        }
+
+        private void Update(DaemonVersion latestVersion)
+        {
+            updating = true;
+            Console.WriteLine("Updating...");
+            string targetAssetName;
+            targetAssetName = "mtga-tracker-daemon-Linux.tar.gz";
+            Asset asset = latestVersion.Assets.Find(asset => asset.Name == targetAssetName);
+
+            string tmpDir = "/tmp/mtga-tracker-dameon";
+            Directory.CreateDirectory(tmpDir);
+            string file = Path.Combine(tmpDir, asset.Name);
+            using (var client = new WebClient())
+            {
+                client.DownloadFile(asset.BrowserDownloadUrl, file);
+            }
+
+            ExtractTGZ(file, tmpDir);
+            
+            DirectoryInfo currentDir = new DirectoryInfo(Directory.GetCurrentDirectory());
+            FileInfo[] oldFiles = currentDir.GetFiles();
+            foreach (FileInfo oldFile in oldFiles)
+            {
+                oldFile.Delete();
+            }
+            Copy(Path.Combine(tmpDir, "bin"), currentDir.FullName);
+            Console.WriteLine("Updated correctly");
+
+            string binary = Path.Combine(currentDir.FullName, "mtga-tracker-daemon");
+            ProcessStartInfo startInfo = new ProcessStartInfo()
+            {
+                FileName = "/bin/bash", Arguments = $"-c \"chmod +x {binary}\" && systemctl restart mtga-trackerd.service", 
+            };
+            Process proc = new Process() { StartInfo = startInfo, };
+            proc.Start();
+            runServer = false;
+            listener.Stop();
+            Console.WriteLine("Restarting...");
+        }
+
+        private string GetLatestVersionJSON()
+        {
+            string url = "https://api.github.com/repos/frcaton/mtga-tracker-daemon/releases/latest";
+            var request = (HttpWebRequest)HttpWebRequest.Create(url);
+
+            request.ContentType = "application/json";
+            request.Method = "GET";
+            request.UserAgent = @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36";
+
+            var response = (HttpWebResponse)request.GetResponse();
+            string responseJSON;
+            using (StreamReader Reader = new StreamReader(response.GetResponseStream()))
+            {
+                return Reader.ReadToEnd();
+            }
+        }
+
+        private void ExtractTGZ(String gzArchiveName, String destFolder)
+        {
+            Stream inStream = File.OpenRead(gzArchiveName);
+            Stream gzipStream = new GZipInputStream(inStream);
+
+            TarArchive tarArchive = TarArchive.CreateInputTarArchive(gzipStream);
+            tarArchive.ExtractContents(destFolder);
+            tarArchive.Close();
+
+            gzipStream.Close();
+            inStream.Close();
+        }
+
+        private void Copy(string sourceDir, string targetDir)
+        {
+            Directory.CreateDirectory(targetDir);
+
+            foreach(var file in Directory.GetFiles(sourceDir))
+            {
+                File.Copy(file, Path.Combine(targetDir, Path.GetFileName(file)));
+            }
+
+            foreach(var directory in Directory.GetDirectories(sourceDir))
+            {
+                Copy(directory, Path.Combine(targetDir, Path.GetFileName(directory)));
+            }
         }
 
     }

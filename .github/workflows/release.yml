@@ -72,6 +72,9 @@ jobs:
       - name: Build
         run: dotnet publish ./src/mtga-tracker-daemon -r linux-x64 --self-contained
 
+      - name: Bump version
+        run: node bumpVersion.js ${{ github.run_number }}
+
       - name: Add deploy artifacts
         run: |
           mkdir -p deploy/linux/bin

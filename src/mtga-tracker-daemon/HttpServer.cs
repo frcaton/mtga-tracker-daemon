@@ -91,8 +91,8 @@ namespace MTGATrackerDaemon
                 }
                 else if(request.Url.AbsolutePath == "/checkForUpdates")
                 {
-                    responseJSON = "{\"result\":\"check for updates request accepted\"}";
-                    CheckForUpdates();
+                    bool updatesAvailable = CheckForUpdates();
+                    responseJSON = $"{{\"updatesAvailable\":\"{updatesAvailable.ToString().ToLower()}\"}}";
                 }
             } 
             else if (request.HttpMethod == "GET")
@@ -302,41 +302,56 @@ namespace MTGATrackerDaemon
 
         private void Update(DaemonVersion latestVersion)
         {
-            updating = true;
-            Console.WriteLine("Updating...");
-            string targetAssetName;
-            targetAssetName = "mtga-tracker-daemon-Linux.tar.gz";
-            Asset asset = latestVersion.Assets.Find(asset => asset.Name == targetAssetName);
-
-            string tmpDir = "/tmp/mtga-tracker-dameon";
-            Directory.CreateDirectory(tmpDir);
-            string file = Path.Combine(tmpDir, asset.Name);
-            using (var client = new WebClient())
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                client.DownloadFile(asset.BrowserDownloadUrl, file);
-            }
+                updating = true;
+                Console.WriteLine("Updating...");
+                string targetAssetName;
+                targetAssetName = "mtga-tracker-daemon-Linux.tar.gz";
+                Asset asset = latestVersion.Assets.Find(asset => asset.Name == targetAssetName);
 
-            ExtractTGZ(file, tmpDir);
-            
-            DirectoryInfo currentDir = new DirectoryInfo(Directory.GetCurrentDirectory());
-            FileInfo[] oldFiles = currentDir.GetFiles();
+                string tmpDir = "/tmp/mtga-tracker-dameon";
+                Directory.CreateDirectory(tmpDir);
+                string file = Path.Combine(tmpDir, asset.Name);
+                using (var client = new WebClient())
+                {
+                    client.DownloadFile(asset.BrowserDownloadUrl, file);
+                }
+
+                ExtractTGZ(file, tmpDir);
+                
+                DirectoryInfo currentDir = new DirectoryInfo(Directory.GetCurrentDirectory());
+                RemoveDirectoryContentsRecursive(currentDir);
+
+                Copy(Path.Combine(tmpDir, "bin"), currentDir.FullName);
+                RemoveDirectoryContentsRecursive(new DirectoryInfo(tmpDir));
+                Console.WriteLine("Updated correctly");
+
+                string binary = Path.Combine(currentDir.FullName, "mtga-tracker-daemon");
+                ProcessStartInfo startInfo = new ProcessStartInfo()
+                {
+                    FileName = "/bin/bash", Arguments = $"-c \"chmod +x {binary}\" && systemctl restart mtga-trackerd.service", 
+                };
+                Process proc = new Process() { StartInfo = startInfo, };
+                proc.Start();
+                runServer = false;
+                listener.Stop();
+                Console.WriteLine("Restarting...");
+            }
+        }
+
+        private void RemoveDirectoryContentsRecursive(DirectoryInfo directory) {
+            FileInfo[] oldFiles = directory.GetFiles();
             foreach (FileInfo oldFile in oldFiles)
             {
                 oldFile.Delete();
             }
-            Copy(Path.Combine(tmpDir, "bin"), currentDir.FullName);
-            Console.WriteLine("Updated correctly");
 
-            string binary = Path.Combine(currentDir.FullName, "mtga-tracker-daemon");
-            ProcessStartInfo startInfo = new ProcessStartInfo()
+            foreach(DirectoryInfo childDirectory in directory.GetDirectories())
             {
-                FileName = "/bin/bash", Arguments = $"-c \"chmod +x {binary}\" && systemctl restart mtga-trackerd.service", 
-            };
-            Process proc = new Process() { StartInfo = startInfo, };
-            proc.Start();
-            runServer = false;
-            listener.Stop();
-            Console.WriteLine("Restarting...");
+                RemoveDirectoryContentsRecursive(childDirectory);
+                childDirectory.Delete();
+            }
         }
 
         private string GetLatestVersionJSON()
@@ -349,7 +364,6 @@ namespace MTGATrackerDaemon
             request.UserAgent = @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36";
 
             var response = (HttpWebResponse)request.GetResponse();
-            string responseJSON;
             using (StreamReader Reader = new StreamReader(response.GetResponseStream()))
             {
                 return Reader.ReadToEnd();

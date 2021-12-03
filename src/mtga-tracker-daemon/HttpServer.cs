@@ -188,6 +188,10 @@ namespace MTGATrackerDaemon
 
             // Write the response info
             byte[] data = Encoding.UTF8.GetBytes(responseJSON);
+            response.AddHeader("Access-Control-Allow-Origin", "*");
+            response.AddHeader("Access-Control-Allow-Methods", "*");
+            response.AddHeader("Access-Control-Allow-Headers", "*");
+            
             response.ContentType = "Application/json";
             response.ContentEncoding = Encoding.UTF8;
             response.ContentLength64 = data.LongLength;

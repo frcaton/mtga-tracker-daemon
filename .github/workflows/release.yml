@@ -70,7 +70,7 @@ jobs:
     needs: [ release ]
     strategy:
       matrix:
-        dotnet-version: [ '5.0.x' ]
+        dotnet-version: [ '6.0.x' ]
 
     steps:
       - name: "Setup node"

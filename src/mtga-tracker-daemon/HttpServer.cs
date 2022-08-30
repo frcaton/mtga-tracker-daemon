@@ -166,9 +166,9 @@ namespace MTGATrackerDaemon
                     catch (Exception ex)
                     {
                         responseJSON = $"{{\"error\":\"{ex.ToString()}\"}}";
-                    }          
+                    }
                 }
-                else if (request.Url.AbsolutePath == "/inventory") 
+                else if (request.Url.AbsolutePath == "/inventory")
                 {
                     try
                     {
@@ -178,11 +178,82 @@ namespace MTGATrackerDaemon
 
                         TimeSpan ts = (DateTime.Now - startTime);
                         responseJSON = $"{{ \"gems\":{inventory["gems"]}, \"gold\":{inventory["gold"]}, \"elapsedTime\":{(int)ts.TotalMilliseconds} }}";
-                    }                    
+                    }
                     catch (Exception ex)
                     {
                         responseJSON = $"{{\"error\":\"{ex.ToString()}\"}}";
-                    }          
+                    }
+                }
+                else if (request.Url.AbsolutePath == "/events")
+                {
+                    try
+                    {
+                        DateTime startTime = DateTime.Now;
+                        IAssemblyImage assemblyImage = CreateAssemblyImage();
+                        object[] events = assemblyImage["PAPA"]["_instance"]["_eventManager"]["_eventsServiceWrapper"]["_cachedEvents"]["_items"];
+
+                        StringBuilder eventsArrayJSON = new StringBuilder("[");
+                        
+                        bool firstEvent = true;
+                        for (int i = 0; i < events.Length; i++)
+                        {
+                            if(events[i] is ManagedClassInstance eventInstance)
+                            {
+                                string eventId = eventInstance.GetValue<string>("InternalEventName");
+                                if (firstEvent)
+                                {
+                                    firstEvent = false;
+                                }
+                                else
+                                {
+                                    eventsArrayJSON.Append(",");
+                                }
+                                eventsArrayJSON.Append($"\"{eventId}\"");
+                            }
+                        }
+                    
+                        eventsArrayJSON.Append("]");
+
+                        TimeSpan ts = (DateTime.Now - startTime);
+                        responseJSON = $"{{\"events\":{eventsArrayJSON},\"elapsedTime\":{(int)ts.TotalMilliseconds}}}";
+
+                    }
+                    catch (Exception ex)
+                    {
+                        responseJSON = $"{{\"error\":\"{ex.ToString()}\"}}";
+                    }
+                }
+                else if (request.Url.AbsolutePath == "/matchState")
+                {
+                    try
+                    {
+                        DateTime startTime = DateTime.Now;
+                        IAssemblyImage assemblyImage = CreateAssemblyImage();
+                        ManagedClassInstance matchManager = (ManagedClassInstance) assemblyImage["PAPA"]["_instance"]["_matchManager"];
+
+                        string matchId = matchManager.GetValue<string>("<MatchID>k__BackingField");
+
+                        ManagedClassInstance localPlayerInfo = (ManagedClassInstance) assemblyImage["PAPA"]["_instance"]["_matchManager"]["<LocalPlayerInfo>k__BackingField"];
+
+                        float LocalMythicPercentile = localPlayerInfo.GetValue<float>("MythicPercentile");
+                        int LocalMythicPlacement = localPlayerInfo.GetValue<int>("MythicPlacement");
+                        int LocalRankingClass = localPlayerInfo.GetValue<int>("RankingClass");
+                        int LocalRankingTier = localPlayerInfo.GetValue<int>("RankingTier");
+
+                        ManagedClassInstance opponentInfo = (ManagedClassInstance) assemblyImage["PAPA"]["_instance"]["_matchManager"]["<OpponentInfo>k__BackingField"];
+
+                        float OpponentMythicPercentile = opponentInfo.GetValue<float>("MythicPercentile");
+                        int OpponentMythicPlacement = opponentInfo.GetValue<int>("MythicPlacement");
+                        int OpponentRankingClass = opponentInfo.GetValue<int>("RankingClass");
+                        int OpponentRankingTier = opponentInfo.GetValue<int>("RankingTier");
+                   
+                        TimeSpan ts = (DateTime.Now - startTime);
+                        responseJSON = $"{{\"matchId\": \"{matchId}\",\"playerRank\":{{\"mythicPercentile\":{LocalMythicPercentile},\"mythicPlacement\":{LocalMythicPlacement},\"class\":{LocalRankingClass},\"tier\":{LocalRankingTier}}},\"opponentRank\":{{\"mythicPercentile\":{OpponentMythicPercentile},\"mythicPlacement\":{OpponentMythicPlacement},\"class\":{OpponentRankingClass},\"tier\":{OpponentRankingTier}}},\"elapsedTime\":{(int)ts.TotalMilliseconds}}}";
+                    }
+                    catch (Exception ex)
+                    {
+                        responseJSON = $"{{\"error\":\"{ex.ToString()}\"}}";
+                    }
                 }
             }        
 

@@ -29,7 +29,7 @@ jobs:
     needs: [ release ]
     strategy:
       matrix:
-        dotnet-version: [ '5.0.x' ]
+        dotnet-version: [ '6.0.x' ]
 
     steps:
       - name: "Setup node"
@@ -47,8 +47,8 @@ jobs:
 
       - name: Zip the Build
         run: |
-          mv "./src/mtga-tracker-daemon/bin/Debug/net5.0/win-x64/publish" "./src/mtga-tracker-daemon/bin/Debug/net5.0/win-x64/bin"
-          7z a -tzip "mtga-tracker-daemon-${{ runner.os }}.zip" "./src/mtga-tracker-daemon/bin/Debug/net5.0/win-x64/bin"
+          mv "./src/mtga-tracker-daemon/bin/Debug/net6.0/win-x64/publish" "./src/mtga-tracker-daemon/bin/Debug/net6.0/win-x64/bin"
+          7z a -tzip "mtga-tracker-daemon-${{ runner.os }}.zip" "./src/mtga-tracker-daemon/bin/Debug/net6.0/win-x64/bin"
 
       - name: Gets latest created release info
         id: latest_release_info
@@ -70,7 +70,7 @@ jobs:
     needs: [ release ]
     strategy:
       matrix:
-        dotnet-version: [ '5.0.x' ]
+        dotnet-version: [ '6.0.x' ]
 
     steps:
       - name: "Setup node"
@@ -89,7 +89,7 @@ jobs:
       - name: Add deploy artifacts
         run: |
           mkdir -p deploy/linux/bin
-          mv -v src/mtga-tracker-daemon/bin/Debug/net5.0/linux-x64/publish/* deploy/linux/bin
+          mv -v src/mtga-tracker-daemon/bin/Debug/net6.0/linux-x64/publish/* deploy/linux/bin
 
       - name: Zip the Build
         run: cd deploy/linux/ && tar czvf "../../mtga-tracker-daemon-${{ runner.os }}.tar.gz" -C ../linux * --transform s/publish/bin/ && cd ../..

@@ -160,7 +160,7 @@ namespace MTGATrackerDaemon
                         ManagedClassInstance accountInfo = (ManagedClassInstance) assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<AccountClient>k__BackingField"]["<AccountInformation>k__BackingField"];
 
                         string playerId = accountInfo.GetValue<string>("AccountID");
-                        string displayName = accountInfo.GetValue<string>("DsiplayName");
+                        string displayName = accountInfo.GetValue<string>("DisplayName");
                         string personaId = accountInfo.GetValue<string>("PersonaID");
                         TimeSpan ts = (DateTime.Now - startTime);
                         responseJSON = $"{{ \"playerId\":\"{playerId}\", \"displayName\":\"{displayName}\", \"personaId\":\"{personaId}\", \"elapsedTime\":{(int)ts.TotalMilliseconds} }}";

@@ -115,7 +115,7 @@ namespace MTGATrackerDaemon
                     {
                         DateTime startTime = DateTime.Now;
                         IAssemblyImage assemblyImage = CreateAssemblyImage();
-                        object[] cards = assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<InventoryManager>k__BackingField"]["_inventoryServiceWrapper"]["<Cards>k__BackingField"]["entries"];
+                        object[] cards = assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<InventoryManager>k__BackingField"]["_inventoryServiceWrapper"]["<Cards>k__BackingField"]["_entries"];
 
                         StringBuilder cardsArrayJSON = new StringBuilder("[");
                         

@@ -277,7 +277,7 @@ namespace MTGATrackerDaemon
         private IAssemblyImage CreateAssemblyImage()
         {
             UnityProcessFacade unityProcess = CreateUnityProcessFacade();
-            return AssemblyImageFactory.Create(unityProcess);  
+            return AssemblyImageFactory.Create(unityProcess, "Core");  
         }    
 
         private UnityProcessFacade CreateUnityProcessFacade()

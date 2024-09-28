@@ -1,4 +1,4 @@
-﻿// ReSharper disable IdentifierTypo
+// ReSharper disable IdentifierTypo
 namespace HackF5.UnitySpy.Offsets
 {
     using System;
@@ -83,9 +83,9 @@ namespace HackF5.UnitySpy.Offsets
             VTable = 0x28 + 0x18,
         };
 
-        public static readonly MonoLibraryOffsets Unity2021_3_14_x64_PE_Offsets = new MonoLibraryOffsets
+        public static readonly MonoLibraryOffsets Unity2021_3_2022_3_x64_PE_Offsets = new MonoLibraryOffsets
         {
-            UnityVersions = new List<UnityVersion>() { UnityVersion.Version2021_3_14 },
+            UnityVersions = new List<UnityVersion>() { UnityVersion.Version2021_3_14, UnityVersion.Version2022_3_42 },
             Is64Bits = true,
             Format = BinaryFormat.PE,
             MonoLibrary = "mono-2.0-bdwgc.dll",
@@ -101,10 +101,10 @@ namespace HackF5.UnitySpy.Offsets
             HashTableSize = 0xc + 0xc,
             HashTableTable = 0x14 + 0xc,
 
-            // _MonoClass
-            // instance_size
-            TypeDefinitionFieldSize = 0x10 + 0x10,
+            // size of every field in the field information | source _MonoClassField (class-internals.h)
+            TypeDefinitionFieldSize = 0x20,                         // 3 ptr + int + padding
 
+            // _MonoClass
             // starting from size_inited, valuetype, enumtype
             TypeDefinitionBitFields = 0x14 + 0xc,
             // class_kind
@@ -137,7 +137,7 @@ namespace HackF5.UnitySpy.Offsets
             TypeDefinitionMonoGenericClass = 0x94 + 0x34 + 0x18 + 0x10,
             TypeDefinitionGenericContainer = 0x110,
 
-            TypeDefinitionRuntimeInfoDomainVTables = 0x2 + 0x6,  // 2 byte 'max_domain' + allignment to pointer size
+            TypeDefinitionRuntimeInfoDomainVTables = 0x2 + 0x6,  // 2 byte 'max_domain' + alignment to pointer size
 
             // MonoVTable.vtable
             // 5 ptr + 8 byte (max_interface_id -> gc_bits) + 8 bytes (4 + 4 padding) + 2 ptr
@@ -187,7 +187,7 @@ namespace HackF5.UnitySpy.Offsets
             Unity2018_4_10_x86_PE_Offsets,
             Unity2019_4_2020_3_x64_PE_Offsets,
             Unity2019_4_2020_3_x64_MachO_Offsets,
-            Unity2021_3_14_x64_PE_Offsets,
+            Unity2021_3_2022_3_x64_PE_Offsets,
         };
 
         public List<UnityVersion> UnityVersions { get; private set; }
@@ -247,7 +247,7 @@ namespace HackF5.UnitySpy.Offsets
         // MonoClassRuntimeInfo Offsets
         public int TypeDefinitionRuntimeInfoDomainVTables { get; private set; }
 
-        /// <summary>Offset of field vtable in MonoVTable</summary>
+        // MonoVTable Offsets
         public int VTable { get; private set; }
 
         public static MonoLibraryOffsets GetOffsets(string gameExecutableFilePath, bool force = true)

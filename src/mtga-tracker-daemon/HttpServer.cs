@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using Microsoft.Data.Sqlite;
 
 using HackF5.UnitySpy;
 using HackF5.UnitySpy.Detail;
@@ -257,6 +258,53 @@ namespace MTGATrackerDaemon
                         responseJSON = $"{{\"error\":\"{ex.ToString()}\"}}";
                     }
                 }
+                else if (request.Url.AbsolutePath == "/allcards")
+                {
+                    try
+                    {
+                        DateTime startTime = DateTime.Now;
+                        IAssemblyImage assemblyImage = CreateAssemblyImage();
+                        
+                        string connectionString = assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<CardDatabase>k__BackingField"]["<CardDataProvider>k__BackingField"]["_baseCardDataProvider"]["_dbConnection"]["_connectionString"];
+                        
+                        StringBuilder cardsJSON = new StringBuilder();
+                        cardsJSON.Append("{\"cards\":[");
+                        
+                        using (var connection = new SqliteConnection(connectionString))
+                        {
+                            connection.Open();
+                            
+                            // Get all cards with their titles
+                            var cardsCommand = connection.CreateCommand();
+                            cardsCommand.CommandText = "SELECT c.GrpId, l.Loc as Title FROM Cards c JOIN Localizations_enUS l ON c.TitleId = l.LocId ORDER BY c.GrpId;";
+                            
+                            bool firstCard = true;
+                            using (var reader = cardsCommand.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    if (!firstCard) cardsJSON.Append(",");
+                                    firstCard = false;
+                                    
+                                    int grpId = reader.GetInt32(0);
+                                    string title = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                                    
+                                    cardsJSON.Append($"{{\"grpId\":{grpId},\"title\":\"{JsonEscape(title)}\"}}");
+                                }
+                            }
+                        }
+                        
+                        cardsJSON.Append("]");
+                        
+                        TimeSpan ts = (DateTime.Now - startTime);
+                        cardsJSON.Append($",\"elapsedTime\":{(int)ts.TotalMilliseconds}}}");
+                        responseJSON = cardsJSON.ToString();
+                    }
+                    catch (Exception ex)
+                    {
+                        responseJSON = $"{{\"error\":\"{JsonEscape(ex.ToString())}\"}}";
+                    }
+                }
             }        
 
             // Write the response info
@@ -278,7 +326,21 @@ namespace MTGATrackerDaemon
         {
             UnityProcessFacade unityProcess = CreateUnityProcessFacade();
             return AssemblyImageFactory.Create(unityProcess, "Core");  
-        }    
+        }
+
+
+        private string JsonEscape(string text)
+        {
+            if (text == null) return "null";
+            return text.Replace("\\", "\\\\")
+                      .Replace("\"", "\\\"")
+                      .Replace("\r", "\\r")
+                      .Replace("\n", "\\n")
+                      .Replace("\t", "\\t");
+        }
+
+
+    
 
         private UnityProcessFacade CreateUnityProcessFacade()
         {            

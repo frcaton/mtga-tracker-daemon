@@ -2,7 +2,6 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <CodeAnalysisRuleSet>..\rules.ruleset</CodeAnalysisRuleSet>
     <NoWarn>1701;1702;CA1724;CA1031</NoWarn>
     <LangVersion>latest</LangVersion>
     <SignAssembly>true</SignAssembly>
@@ -22,15 +21,7 @@
 
   <ItemGroup>
     <PackageReference Include="Jetbrains.Annotations" Version="2019.1.1" />
-    <PackageReference Include="Microsoft.CodeQuality.Analyzers" Version="3.3.2">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="microsoft.csharp" Version="4.5.0" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="PeNet" Version="2.8.1" />
   </ItemGroup>
 

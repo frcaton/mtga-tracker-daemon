@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{BDE24B67-D899-464E-A6A5-5A5AAD0B864C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HackF5.UnitySpy", "src\HackF5.UnitySpy\HackF5.UnitySpy.csproj", "{966393CD-AA1A-4A11-9D66-93925330220E}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "mtga-tracker-daemon", "src\mtga-tracker-daemon\mtga-tracker-daemon.csproj", "{B5299BF3-C342-4FC6-AADC-B9133D01796A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{966393CD-AA1A-4A11-9D66-93925330220E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{966393CD-AA1A-4A11-9D66-93925330220E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{966393CD-AA1A-4A11-9D66-93925330220E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{966393CD-AA1A-4A11-9D66-93925330220E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B5299BF3-C342-4FC6-AADC-B9133D01796A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5299BF3-C342-4FC6-AADC-B9133D01796A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B5299BF3-C342-4FC6-AADC-B9133D01796A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5299BF3-C342-4FC6-AADC-B9133D01796A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{966393CD-AA1A-4A11-9D66-93925330220E} = {BDE24B67-D899-464E-A6A5-5A5AAD0B864C}
+		{B5299BF3-C342-4FC6-AADC-B9133D01796A} = {BDE24B67-D899-464E-A6A5-5A5AAD0B864C}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9AE3CB59-DF9B-4D70-81CE-60406422789F}
+	EndGlobalSection
+EndGlobal

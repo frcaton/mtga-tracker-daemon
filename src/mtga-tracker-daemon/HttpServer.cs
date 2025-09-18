@@ -1,5 +1,6 @@
 // Based on the work of Benjamin N. Summerton <define-private-public> on HttpServer.cs
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -18,6 +19,8 @@ using ICSharpCode.SharpZipLib.GZip;
 using ICSharpCode.SharpZipLib.Tar;
 
 using Newtonsoft.Json;
+using Microsoft.Data.Sqlite;
+using MTGATrackerDaemon.Models;
 
 namespace MTGATrackerDaemon
 {
@@ -86,13 +89,13 @@ namespace MTGATrackerDaemon
                 if (request.Url.AbsolutePath == "/shutdown")
                 {
                     Console.WriteLine("Shutdown requested");
-                    responseJSON = "{\"result\":\"shutdown request accepted\"}";
+                    var shutdownResponse = new ShutdownResponseData { Result = "shutdown request accepted" };
+                    responseJSON = JsonConvert.SerializeObject(shutdownResponse);
                     runServer = false;
                 }
                 else if(request.Url.AbsolutePath == "/checkForUpdates")
                 {
-                    bool updatesAvailable = CheckForUpdates();
-                    responseJSON = $"{{\"updatesAvailable\":\"{updatesAvailable.ToString().ToLower()}\"}}";
+                    responseJSON = JsonConvert.SerializeObject(CheckForUpdates());
                 }
             } 
             else if (request.HttpMethod == "GET")
@@ -100,14 +103,14 @@ namespace MTGATrackerDaemon
                 if (request.Url.AbsolutePath == "/status")
                 {
                     Process mtgaProcess = GetMTGAProcess();
-                    if (mtgaProcess == null)
+                    var statusResponse = new StatusResponseData
                     {
-                        responseJSON = $"{{\"isRunning\":\"false\", \"daemonVersion\":\"{currentVersion}\", \"updating\":\"{updating.ToString().ToLower()}\", \"processId\":-1}}";
-                    }
-                    else
-                    {
-                        responseJSON = $"{{\"isRunning\":\"true\", \"daemonVersion\":\"{currentVersion}\", \"updating\":\"{updating.ToString().ToLower()}\", \"processId\":{mtgaProcess.Id}}}";
-                    }
+                        IsRunning = mtgaProcess != null,
+                        DaemonVersion = currentVersion.ToString(),
+                        Updating = updating,
+                        ProcessId = mtgaProcess?.Id ?? -1
+                    };
+                    responseJSON = JsonConvert.SerializeObject(statusResponse);
                 }
                 else if (request.Url.AbsolutePath == "/cards")
                 {
@@ -117,9 +120,7 @@ namespace MTGATrackerDaemon
                         IAssemblyImage assemblyImage = CreateAssemblyImage();
                         object[] cards = assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<InventoryManager>k__BackingField"]["_inventoryServiceWrapper"]["<Cards>k__BackingField"]["_entries"];
 
-                        StringBuilder cardsArrayJSON = new StringBuilder("[");
-                        
-                        bool firstCard = true;
+                        var cardList = new List<CardOwnership>();
                         for (int i = 0; i < cards.Length; i++)
                         {
                             if(cards[i] is ManagedStructInstance cardInstance)
@@ -127,28 +128,24 @@ namespace MTGATrackerDaemon
                                 int owned = cardInstance.GetValue<int>("value");
                                 if (owned > 0)
                                 {
-                                    if (firstCard)
-                                    {
-                                        firstCard = false;
-                                    }
-                                    else
-                                    {
-                                        cardsArrayJSON.Append(",");
-                                    }
                                     uint groupId = cardInstance.GetValue<uint>("key");
-                                    cardsArrayJSON.Append($"{{\"grpId\":{groupId}, \"owned\":{owned}}}");
+                                    cardList.Add(new CardOwnership { GrpId = groupId, Owned = owned });
                                 }
                             }
                         }
 
-                        cardsArrayJSON.Append("]");
-
                         TimeSpan ts = (DateTime.Now - startTime);
-                        responseJSON = $"{{ \"cards\":{cardsArrayJSON}, \"elapsedTime\":{(int)ts.TotalMilliseconds} }}";
+                        var cardsResponse = new CardsResponseData
+                        {
+                            Cards = cardList.ToArray(),
+                            ElapsedTime = (int)ts.TotalMilliseconds
+                        };
+                        responseJSON = JsonConvert.SerializeObject(cardsResponse);
                     }                    
                     catch (Exception ex)
                     {
-                        responseJSON = $"{{\"error\":\"{ex.ToString()}\"}}";
+                        var errorResponse = new ErrorResponseData { Error = ex.ToString() };
+                        responseJSON = JsonConvert.SerializeObject(errorResponse);
                     }      
                 }
                 else if (request.Url.AbsolutePath == "/playerId") 
@@ -159,15 +156,24 @@ namespace MTGATrackerDaemon
                         IAssemblyImage assemblyImage = CreateAssemblyImage();
                         ManagedClassInstance accountInfo = (ManagedClassInstance) assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<AccountClient>k__BackingField"]["<AccountInformation>k__BackingField"];
 
-                        string playerId = accountInfo.GetValue<string>("AccountID");
+                        string playerID = accountInfo.GetValue<string>("AccountID");
                         string displayName = accountInfo.GetValue<string>("DisplayName");
-                        string personaId = accountInfo.GetValue<string>("PersonaID");
+                        string personaID = accountInfo.GetValue<string>("PersonaID");
                         TimeSpan ts = (DateTime.Now - startTime);
-                        responseJSON = $"{{ \"playerId\":\"{playerId}\", \"displayName\":\"{displayName}\", \"personaId\":\"{personaId}\", \"elapsedTime\":{(int)ts.TotalMilliseconds} }}";
+                        
+                        var playerResponse = new PlayerIDResponseData
+                        {
+                            PlayerID = playerID,
+                            DisplayName = displayName,
+                            PersonaID = personaID,
+                            ElapsedTime = (int)ts.TotalMilliseconds
+                        };
+                        responseJSON = JsonConvert.SerializeObject(playerResponse);
                     }                    
                     catch (Exception ex)
                     {
-                        responseJSON = $"{{\"error\":\"{ex.ToString()}\"}}";
+                        var errorResponse = new ErrorResponseData { Error = ex.ToString() };
+                        responseJSON = JsonConvert.SerializeObject(errorResponse);
                     }
                 }
                 else if (request.Url.AbsolutePath == "/inventory")
@@ -179,11 +185,18 @@ namespace MTGATrackerDaemon
                         var inventory = assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<InventoryManager>k__BackingField"]["_inventoryServiceWrapper"]["m_inventory"];
 
                         TimeSpan ts = (DateTime.Now - startTime);
-                        responseJSON = $"{{ \"gems\":{inventory["gems"]}, \"gold\":{inventory["gold"]}, \"elapsedTime\":{(int)ts.TotalMilliseconds} }}";
+                        var inventoryResponse = new InventoryResponseData
+                        {
+                            Gems = inventory["gems"],
+                            Gold = inventory["gold"],
+                            ElapsedTime = (int)ts.TotalMilliseconds
+                        };
+                        responseJSON = JsonConvert.SerializeObject(inventoryResponse);
                     }
                     catch (Exception ex)
                     {
-                        responseJSON = $"{{\"error\":\"{ex.ToString()}\"}}";
+                        var errorResponse = new ErrorResponseData { Error = ex.ToString() };
+                        responseJSON = JsonConvert.SerializeObject(errorResponse);
                     }
                 }
                 else if (request.Url.AbsolutePath == "/events")
@@ -194,35 +207,28 @@ namespace MTGATrackerDaemon
                         IAssemblyImage assemblyImage = CreateAssemblyImage();
                         object[] events = assemblyImage["PAPA"]["_instance"]["_eventManager"]["_eventsServiceWrapper"]["_cachedEvents"]["_items"];
 
-                        StringBuilder eventsArrayJSON = new StringBuilder("[");
-                        
-                        bool firstEvent = true;
+                        var eventList = new List<string>();
                         for (int i = 0; i < events.Length; i++)
                         {
                             if(events[i] is ManagedClassInstance eventInstance)
                             {
                                 string eventId = eventInstance.GetValue<string>("InternalEventName");
-                                if (firstEvent)
-                                {
-                                    firstEvent = false;
-                                }
-                                else
-                                {
-                                    eventsArrayJSON.Append(",");
-                                }
-                                eventsArrayJSON.Append($"\"{eventId}\"");
+                                eventList.Add(eventId);
                             }
                         }
-                    
-                        eventsArrayJSON.Append("]");
 
                         TimeSpan ts = (DateTime.Now - startTime);
-                        responseJSON = $"{{\"events\":{eventsArrayJSON},\"elapsedTime\":{(int)ts.TotalMilliseconds}}}";
-
+                        var eventsResponse = new EventsResponseData
+                        {
+                            Events = eventList.ToArray(),
+                            ElapsedTime = (int)ts.TotalMilliseconds
+                        };
+                        responseJSON = JsonConvert.SerializeObject(eventsResponse);
                     }
                     catch (Exception ex)
                     {
-                        responseJSON = $"{{\"error\":\"{ex.ToString()}\"}}";
+                        var errorResponse = new ErrorResponseData { Error = ex.ToString() };
+                        responseJSON = JsonConvert.SerializeObject(errorResponse);
                     }
                 }
                 else if (request.Url.AbsolutePath == "/matchState")
@@ -250,14 +256,84 @@ namespace MTGATrackerDaemon
                         int OpponentRankingTier = opponentInfo.GetValue<int>("RankingTier");
                    
                         TimeSpan ts = (DateTime.Now - startTime);
-                        responseJSON = $"{{\"matchId\": \"{matchId}\",\"playerRank\":{{\"mythicPercentile\":{LocalMythicPercentile},\"mythicPlacement\":{LocalMythicPlacement},\"class\":{LocalRankingClass},\"tier\":{LocalRankingTier}}},\"opponentRank\":{{\"mythicPercentile\":{OpponentMythicPercentile},\"mythicPlacement\":{OpponentMythicPlacement},\"class\":{OpponentRankingClass},\"tier\":{OpponentRankingTier}}},\"elapsedTime\":{(int)ts.TotalMilliseconds}}}";
+                        var matchResponse = new MatchStateResponseData
+                        {
+                            MatchId = matchId,
+                            PlayerRank = new PlayerRank
+                            {
+                                MythicPercentile = LocalMythicPercentile,
+                                MythicPlacement = LocalMythicPlacement,
+                                Class = LocalRankingClass,
+                                Tier = LocalRankingTier
+                            },
+                            OpponentRank = new PlayerRank
+                            {
+                                MythicPercentile = OpponentMythicPercentile,
+                                MythicPlacement = OpponentMythicPlacement,
+                                Class = OpponentRankingClass,
+                                Tier = OpponentRankingTier
+                            },
+                            ElapsedTime = (int)ts.TotalMilliseconds
+                        };
+                        responseJSON = JsonConvert.SerializeObject(matchResponse);
                     }
                     catch (Exception ex)
                     {
-                        responseJSON = $"{{\"error\":\"{ex.ToString()}\"}}";
+                        var errorResponse = new ErrorResponseData { Error = ex.ToString() };
+                        responseJSON = JsonConvert.SerializeObject(errorResponse);
                     }
                 }
-            }        
+                else if (request.Url.AbsolutePath == "/allCards")
+                {
+                    try
+                    {
+                        DateTime startTime = DateTime.Now;
+                        IAssemblyImage assemblyImage = CreateAssemblyImage();
+
+                        var dbConnection = assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<CardDatabase>k__BackingField"]["<CardDataProvider>k__BackingField"]["_baseCardDataProvider"]["_dbConnection"];
+                        
+                        string connectionString = dbConnection["_connectionString"];
+                        connectionString = connectionString.Replace("Data Source=Z:", "Data Source=");
+                        connectionString = connectionString.Replace("\\", "/");
+                        
+                        var cardList = new List<CardInfo>();
+                        
+                        using (var connection = new SqliteConnection(connectionString))
+                        {
+                            connection.Open();
+                            
+                            // Get all cards with their titles
+                            var cardsCommand = connection.CreateCommand();
+                            cardsCommand.CommandText = "SELECT c.GrpId, l.Loc as Title, c.ExpansionCode as ExpansionCode FROM Cards c JOIN Localizations_enUS l ON c.TitleId = l.LocId ORDER BY c.GrpId;";
+                            
+                            using (var reader = cardsCommand.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    int grpId = reader.GetInt32(0);
+                                    string title = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                                    string expansionCode = reader.IsDBNull(2) ? "" : reader.GetString(2);
+                                    
+                                    cardList.Add(new CardInfo { GrpId = grpId, Title = title, ExpansionCode = expansionCode });
+                                }
+                            }
+                        }
+                        
+                        TimeSpan ts = (DateTime.Now - startTime);
+                        var allCardsResponse = new AllCardsResponseData
+                        {
+                            Cards = cardList.ToArray(),
+                            ElapsedTime = (int)ts.TotalMilliseconds
+                        };
+                        responseJSON = JsonConvert.SerializeObject(allCardsResponse);
+                    }
+                    catch (Exception ex)
+                    {
+                        var errorResponse = new ErrorResponseData { Error = ex.ToString() };
+                        responseJSON = JsonConvert.SerializeObject(errorResponse);
+                    }
+                }
+            }
 
             // Write the response info
             byte[] data = Encoding.UTF8.GetBytes(responseJSON);
@@ -356,7 +432,7 @@ namespace MTGATrackerDaemon
             return null;
         }
 
-        private bool CheckForUpdates()
+        private CheckForUpdatesResponseData CheckForUpdates()
         {            
             try 
             {
@@ -365,19 +441,20 @@ namespace MTGATrackerDaemon
                                 
                 Console.WriteLine($"Latest version = {latestVersion.TagName}");
                 if(currentVersion.CompareTo(new Version(latestVersion.TagName)) < 0)
-                {                    
+                {
                     Task.Run(() => Update(latestVersion));
-                    return true;
+                    return new () { UpdatesAvailable = true };
                 }
             } 
             catch (Exception ex)
             {
                 Console.WriteLine($"Could not get latest version {ex}");
             }
-            return false;
+
+            return new () { UpdatesAvailable = false };
         }
 
-        private void Update(DaemonVersion latestVersion)
+        private async Task Update(DaemonVersion latestVersion)
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
@@ -390,9 +467,12 @@ namespace MTGATrackerDaemon
                 string tmpDir = "/tmp/mtga-tracker-dameon";
                 Directory.CreateDirectory(tmpDir);
                 string file = Path.Combine(tmpDir, asset.Name);
-                using (var client = new WebClient())
+                
+                using (var client = new HttpClient())
                 {
-                    client.DownloadFile(asset.BrowserDownloadUrl, file);
+                    using var stream = await client.GetStreamAsync(asset.BrowserDownloadUrl);
+                    using var fileStream = new FileStream(file, FileMode.Create);
+                    await stream.CopyToAsync(fileStream);
                 }
 
                 ExtractTGZ(file, tmpDir);
@@ -434,25 +514,20 @@ namespace MTGATrackerDaemon
         private string GetLatestVersionJSON()
         {
             string url = "https://api.github.com/repos/frcaton/mtga-tracker-daemon/releases/latest";
-            var request = (HttpWebRequest)HttpWebRequest.Create(url);
-
-            request.ContentType = "application/json";
-            request.Method = "GET";
-            request.UserAgent = @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36";
-
-            var response = (HttpWebResponse)request.GetResponse();
-            using (StreamReader Reader = new StreamReader(response.GetResponseStream()))
+            
+            using (var client = new HttpClient())
             {
-                return Reader.ReadToEnd();
+                client.DefaultRequestHeaders.Add("User-Agent", @"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.106 Safari/537.36");
+                return client.GetStringAsync(url).GetAwaiter().GetResult();
             }
         }
 
-        private void ExtractTGZ(String gzArchiveName, String destFolder)
+        private void ExtractTGZ(string gzArchiveName, string destFolder)
         {
             Stream inStream = File.OpenRead(gzArchiveName);
             Stream gzipStream = new GZipInputStream(inStream);
 
-            TarArchive tarArchive = TarArchive.CreateInputTarArchive(gzipStream);
+            TarArchive tarArchive = TarArchive.CreateInputTarArchive(gzipStream, Encoding.UTF8);
             tarArchive.ExtractContents(destFolder);
             tarArchive.Close();
 
@@ -474,7 +549,6 @@ namespace MTGATrackerDaemon
                 Copy(directory, Path.Combine(targetDir, Path.GetFileName(directory)));
             }
         }
-
     }
 
 }

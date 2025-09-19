@@ -311,7 +311,7 @@ namespace MTGATrackerDaemon
                                 while (reader.Read())
                                 {
                                     int grpId = reader.GetInt32(0);
-                                    string title = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                                    string title = reader.IsDBNull(1) ? "" : StringUtils.JsonEscape(reader.GetString(1));
                                     string expansionCode = reader.IsDBNull(2) ? "" : reader.GetString(2);
                                     
                                     cardList.Add(new CardInfo { GrpId = grpId, Title = title, ExpansionCode = expansionCode });

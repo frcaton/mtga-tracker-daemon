@@ -1,6 +1,7 @@
 ﻿namespace HackF5.UnitySpy
 {
     using System;
+    using System.Collections.Generic;
     using System.IO;
     using System.Runtime.InteropServices;
     using HackF5.UnitySpy.Detail;
@@ -17,6 +18,31 @@
     [PublicAPI]
     public static class AssemblyImageFactory
     {
+        public static List<string> GetAssemblyNames([NotNull] UnityProcessFacade process)
+        {
+            if (process == null)
+            {
+                throw new ArgumentNullException("process parameter cannot be null");
+            }
+
+            IntPtr rootDomainFunctionAddress = AssemblyImageFactory.GetRootDomainFunctionAddress(process);
+
+            List<string> assemblyNames = new List<string>();
+
+            //// pointer to array of structs of type _MonoAssembly
+            var assemblyArrayAddress = AssemblyImageFactory.GetAssemblyArrayAddress(process, rootDomainFunctionAddress);
+            for (var assemblyAddress = assemblyArrayAddress;
+                assemblyAddress != IntPtr.Zero;
+                assemblyAddress = process.ReadPtr(assemblyAddress + process.SizeOfPtr))
+            {
+                var assembly = process.ReadPtr(assemblyAddress);
+                var assemblyNameAddress = process.ReadPtr(assembly + (process.SizeOfPtr * 2));
+                assemblyNames.Add(process.ReadAsciiString(assemblyNameAddress));
+            }
+
+            return assemblyNames;
+        }
+
         public static IAssemblyImage Create([NotNull] UnityProcessFacade process, string assemblyName = "Assembly-CSharp")
         {
             if (process == null)
@@ -24,22 +50,45 @@
                 throw new ArgumentNullException("process parameter cannot be null");
             }
 
+            IntPtr rootDomainFunctionAddress = AssemblyImageFactory.GetRootDomainFunctionAddress(process);
+            return AssemblyImageFactory.GetAssemblyImage(process, assemblyName, rootDomainFunctionAddress);
+        }
+
+        private static IntPtr GetRootDomainFunctionAddress(UnityProcessFacade process)
+        {
             var monoModule = process.GetMonoModule();
-            IntPtr rootDomainFunctionAddress;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                rootDomainFunctionAddress = GetRootDomainFunctionAddressMachOFormat(monoModule);
+                return GetRootDomainFunctionAddressMachOFormat(monoModule);
             }
             else
             {
                 var moduleDump = process.ReadModule(monoModule);
-                rootDomainFunctionAddress = AssemblyImageFactory.GetRootDomainFunctionAddressPEFormat(moduleDump, monoModule, process.Is64Bits);
+                return AssemblyImageFactory.GetRootDomainFunctionAddressPEFormat(moduleDump, monoModule, process.Is64Bits);
             }
-
-            return AssemblyImageFactory.GetAssemblyImage(process, assemblyName, rootDomainFunctionAddress);
         }
 
         private static AssemblyImage GetAssemblyImage(UnityProcessFacade process, string name, IntPtr rootDomainFunctionAddress)
+        {
+            //// pointer to array of structs of type _MonoAssembly
+            var assemblyArrayAddress = AssemblyImageFactory.GetAssemblyArrayAddress(process, rootDomainFunctionAddress);
+            for (var assemblyAddress = assemblyArrayAddress;
+                assemblyAddress != IntPtr.Zero;
+                assemblyAddress = process.ReadPtr(assemblyAddress + process.SizeOfPtr))
+            {
+                var assembly = process.ReadPtr(assemblyAddress);
+                var assemblyNameAddress = process.ReadPtr(assembly + (process.SizeOfPtr * 2));
+                var assemblyName = process.ReadAsciiString(assemblyNameAddress);
+                if (assemblyName == name)
+                {
+                    return new AssemblyImage(process, process.ReadPtr(assembly + process.MonoLibraryOffsets.AssemblyImage));
+                }
+            }
+
+            throw new InvalidOperationException($"Unable to find assembly '{name}'");
+        }
+
+        private static IntPtr GetAssemblyArrayAddress(UnityProcessFacade process, IntPtr rootDomainFunctionAddress)
         {
             IntPtr domain;
             if (process.Is64Bits)
@@ -102,22 +151,8 @@
                 //// pointer to struct of type _MonoDomain
                 domain = process.ReadPtr(domainAddress);
             }
-            //// pointer to array of structs of type _MonoAssembly
-            var assemblyArrayAddress = process.ReadPtr(domain + process.MonoLibraryOffsets.ReferencedAssemblies);
-            for (var assemblyAddress = assemblyArrayAddress;
-                assemblyAddress != IntPtr.Zero;
-                assemblyAddress = process.ReadPtr(assemblyAddress + process.SizeOfPtr))
-            {
-                var assembly = process.ReadPtr(assemblyAddress);
-                var assemblyNameAddress = process.ReadPtr(assembly + (process.SizeOfPtr * 2));
-                var assemblyName = process.ReadAsciiString(assemblyNameAddress);
-                if (assemblyName == name)
-                {
-                    return new AssemblyImage(process, process.ReadPtr(assembly + process.MonoLibraryOffsets.AssemblyImage));
-                }
-            }
 
-            throw new InvalidOperationException($"Unable to find assembly '{name}'");
+            return process.ReadPtr(domain + process.MonoLibraryOffsets.ReferencedAssemblies);
         }
 
         private static IntPtr GetRootDomainFunctionAddressPEFormat(byte[] moduleDump, ModuleInfo monoModuleInfo, bool is64Bits)

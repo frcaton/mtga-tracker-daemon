@@ -85,7 +85,7 @@ namespace HackF5.UnitySpy.Offsets
 
         public static readonly MonoLibraryOffsets Unity2021_3_2022_3_x64_PE_Offsets = new MonoLibraryOffsets
         {
-            UnityVersions = new List<UnityVersion>() { UnityVersion.Version2021_3_14, UnityVersion.Version2022_3_42 },
+            UnityVersions = new List<UnityVersion>() { UnityVersion.Version2021_3_14, UnityVersion.Version2022_3_42, UnityVersion.Version2022_3_42 },
             Is64Bits = true,
             Format = BinaryFormat.PE,
             MonoLibrary = "mono-2.0-bdwgc.dll",

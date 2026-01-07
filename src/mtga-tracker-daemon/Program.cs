@@ -8,7 +8,7 @@ namespace MTGATrackerDaemon
     {
         public const string BaseUrl = "http://localhost:";
         
-        public const int DefaultPort = 6842;
+        public const int DefaultPort = 9014;
 
         static void Main(string[] args)
         {

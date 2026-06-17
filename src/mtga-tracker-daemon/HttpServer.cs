@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 using HackF5.UnitySpy;
@@ -283,17 +284,36 @@ namespace MTGATrackerDaemon
                         responseJSON = JsonConvert.SerializeObject(errorResponse);
                     }
                 }
+                else if (request.Url.AbsolutePath == "/allCardsConnectionString")
+                {
+                    try
+                    {
+                        DateTime startTime = DateTime.Now;
+                        IAssemblyImage assemblyImage = CreateAssemblyImage();
+                        string connectionString = GetConnectionString(assemblyImage);
+
+                        TimeSpan ts = (DateTime.Now - startTime);
+                        var connectionStringResponse = new AllCardsConnectionStringResponseData
+                        {
+                            ConnectionString = connectionString,
+                            ElapsedTime = (int)ts.TotalMilliseconds
+                        };
+                        responseJSON = JsonConvert.SerializeObject(connectionStringResponse);
+                    }
+                    catch (Exception ex)
+                    {
+                        var errorResponse = new ErrorResponseData { Error = ex.ToString() };
+                        responseJSON = JsonConvert.SerializeObject(errorResponse);
+                    }
+                }
                 else if (request.Url.AbsolutePath == "/allCards")
                 {
                     try
                     {
                         DateTime startTime = DateTime.Now;
                         IAssemblyImage assemblyImage = CreateAssemblyImage();
-
-                        var dbConnection = assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<CardDatabase>k__BackingField"]["<CardDataProvider>k__BackingField"]["_baseCardDataProvider"]["_dbConnection"];
-                        
-                        string connectionString = dbConnection["_connectionString"];
-                        connectionString = connectionString.Replace("Data Source=Z:", "Data Source=");
+                        string connectionString = GetConnectionString(assemblyImage);
+                        connectionString = Regex.Replace(connectionString, @"Data Source=[A-Za-z]:", "Data Source=");
                         connectionString = connectionString.Replace("\\", "/");
                         
                         var cardList = new List<CardInfo>();
@@ -354,6 +374,12 @@ namespace MTGATrackerDaemon
         {
             UnityProcessFacade unityProcess = CreateUnityProcessFacade();
             return AssemblyImageFactory.Create(unityProcess, "Core");  
+        }
+
+        private string GetConnectionString(IAssemblyImage assemblyImage)
+        {
+            var dbConnection = assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<CardDatabase>k__BackingField"]["<CardDataProvider>k__BackingField"]["_baseCardDataProvider"]["_dbConnection"];
+            return dbConnection["_connectionString"];
         }    
 
         private UnityProcessFacade CreateUnityProcessFacade()

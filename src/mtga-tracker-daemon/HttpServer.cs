@@ -290,7 +290,7 @@ namespace MTGATrackerDaemon
                     {
                         DateTime startTime = DateTime.Now;
                         IAssemblyImage assemblyImage = CreateAssemblyImage();
-                        string connectionString = GetConnectionString(assemblyImage);
+                        string connectionString = ResolveConnectionString(GetConnectionString(assemblyImage));
 
                         TimeSpan ts = (DateTime.Now - startTime);
                         var connectionStringResponse = new AllCardsConnectionStringResponseData
@@ -312,9 +312,7 @@ namespace MTGATrackerDaemon
                     {
                         DateTime startTime = DateTime.Now;
                         IAssemblyImage assemblyImage = CreateAssemblyImage();
-                        string connectionString = GetConnectionString(assemblyImage);
-                        connectionString = Regex.Replace(connectionString, @"Data Source=[A-Za-z]:", "Data Source=");
-                        connectionString = connectionString.Replace("\\", "/");
+                        string connectionString = ResolveConnectionString(GetConnectionString(assemblyImage));
                         
                         var cardList = new List<CardInfo>();
                         
@@ -380,6 +378,62 @@ namespace MTGATrackerDaemon
         {
             var dbConnection = assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<CardDatabase>k__BackingField"]["<CardDataProvider>k__BackingField"]["_baseCardDataProvider"]["_dbConnection"];
             return dbConnection["_connectionString"];
+        }
+
+        private string ResolveConnectionString(string connectionString)
+        {
+            const string dataSourcePrefix = "Data Source=";
+            int dataSourceIndex = connectionString.IndexOf(dataSourcePrefix, StringComparison.OrdinalIgnoreCase);
+            if (dataSourceIndex < 0)
+            {
+                return connectionString;
+            }
+
+            int pathStart = dataSourceIndex + dataSourcePrefix.Length;
+            int pathEnd = connectionString.IndexOf(';', pathStart);
+            if (pathEnd < 0)
+            {
+                pathEnd = connectionString.Length;
+            }
+
+            string dataPath = connectionString.Substring(pathStart, pathEnd - pathStart);
+            dataPath = Regex.Replace(dataPath, @"^[A-Za-z]:", "");
+            dataPath = dataPath.Replace("\\", "/");
+
+            if (!File.Exists(dataPath) && RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                string gameExecutablePath = GetGameExecutablePath();
+                if (gameExecutablePath != null)
+                {
+                    string gameDir = Path.GetDirectoryName(gameExecutablePath);
+                    string steamAppsPath = Directory.GetParent(Directory.GetParent(gameDir).FullName).FullName;
+                    string resolvedPath = Path.Combine(steamAppsPath, dataPath.TrimStart('/'));
+                    if (File.Exists(resolvedPath))
+                    {
+                        dataPath = resolvedPath;
+                    }
+                }
+            }
+
+            return connectionString.Substring(0, pathStart) + dataPath + connectionString.Substring(pathEnd);
+        }
+
+        private string GetGameExecutablePath()
+        {
+            Process mtgaProcess = GetMTGAProcess();
+            if (mtgaProcess == null)
+            {
+                return null;
+            }
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                string memPseudoFilePath = $"/proc/{mtgaProcess.Id}/mem";
+                var processFacadeLinux = new ProcessFacadeLinuxDirect(mtgaProcess.Id, memPseudoFilePath);
+                return processFacadeLinux.GetModulePath(mtgaProcess.ProcessName);
+            }
+
+            return mtgaProcess.MainModule?.FileName;
         }    
 
         private UnityProcessFacade CreateUnityProcessFacade()

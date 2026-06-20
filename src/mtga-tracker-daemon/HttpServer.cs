@@ -119,7 +119,7 @@ namespace MTGATrackerDaemon
                     {
                         DateTime startTime = DateTime.Now;
                         IAssemblyImage assemblyImage = CreateAssemblyImage();
-                        object[] cards = assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<InventoryManager>k__BackingField"]["_inventoryServiceWrapper"]["<Cards>k__BackingField"]["_entries"];
+                        object[] cards = GetInventoryServiceWrapper(assemblyImage)["<Cards>k__BackingField"]["_entries"];
 
                         var cardList = new List<CardOwnership>();
                         for (int i = 0; i < cards.Length; i++)
@@ -155,7 +155,7 @@ namespace MTGATrackerDaemon
                     {
                         DateTime startTime = DateTime.Now;
                         IAssemblyImage assemblyImage = CreateAssemblyImage();
-                        ManagedClassInstance accountInfo = (ManagedClassInstance) assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<AccountClient>k__BackingField"]["<AccountInformation>k__BackingField"];
+                        ManagedClassInstance accountInfo = (ManagedClassInstance) GetWrapperController(assemblyImage)["<AccountClient>k__BackingField"]["<AccountInformation>k__BackingField"];
 
                         string playerID = accountInfo.GetValue<string>("AccountID");
                         string displayName = accountInfo.GetValue<string>("DisplayName");
@@ -183,7 +183,8 @@ namespace MTGATrackerDaemon
                     {
                         DateTime startTime = DateTime.Now;
                         IAssemblyImage assemblyImage = CreateAssemblyImage();
-                        var inventory = assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<InventoryManager>k__BackingField"]["_inventoryServiceWrapper"]["m_inventory"];
+                        var inventoryServiceWrapper = GetInventoryServiceWrapper(assemblyImage);
+                        var inventory = inventoryServiceWrapper["m_inventory"];
 
                         TimeSpan ts = (DateTime.Now - startTime);
                         var inventoryResponse = new InventoryResponseData
@@ -206,7 +207,7 @@ namespace MTGATrackerDaemon
                     {
                         DateTime startTime = DateTime.Now;
                         IAssemblyImage assemblyImage = CreateAssemblyImage();
-                        object[] events = assemblyImage["PAPA"]["_instance"]["_eventManager"]["_eventsServiceWrapper"]["_cachedEvents"]["_items"];
+                        object[] events = GetPAPAInstance(assemblyImage)["_eventManager"]["_eventsServiceWrapper"]["_cachedEvents"]["_items"];
 
                         var eventList = new List<string>();
                         for (int i = 0; i < events.Length; i++)
@@ -238,18 +239,18 @@ namespace MTGATrackerDaemon
                     {
                         DateTime startTime = DateTime.Now;
                         IAssemblyImage assemblyImage = CreateAssemblyImage();
-                        ManagedClassInstance matchManager = (ManagedClassInstance) assemblyImage["PAPA"]["_instance"]["_matchManager"];
+                        ManagedClassInstance matchManager = GetMatchManager(assemblyImage);
 
                         string matchId = matchManager.GetValue<string>("<MatchID>k__BackingField");
 
-                        ManagedClassInstance localPlayerInfo = (ManagedClassInstance) assemblyImage["PAPA"]["_instance"]["_matchManager"]["<LocalPlayerInfo>k__BackingField"];
+                        ManagedClassInstance localPlayerInfo = matchManager["<LocalPlayerInfo>k__BackingField"];
 
                         float LocalMythicPercentile = localPlayerInfo.GetValue<float>("MythicPercentile");
                         int LocalMythicPlacement = localPlayerInfo.GetValue<int>("MythicPlacement");
                         int LocalRankingClass = localPlayerInfo.GetValue<int>("RankingClass");
                         int LocalRankingTier = localPlayerInfo.GetValue<int>("RankingTier");
 
-                        ManagedClassInstance opponentInfo = (ManagedClassInstance) assemblyImage["PAPA"]["_instance"]["_matchManager"]["<OpponentInfo>k__BackingField"];
+                        ManagedClassInstance opponentInfo = matchManager["<OpponentInfo>k__BackingField"];
 
                         float OpponentMythicPercentile = opponentInfo.GetValue<float>("MythicPercentile");
                         int OpponentMythicPlacement = opponentInfo.GetValue<int>("MythicPlacement");
@@ -374,9 +375,29 @@ namespace MTGATrackerDaemon
             return AssemblyImageFactory.Create(unityProcess, "Core");  
         }
 
+        private ManagedClassInstance GetWrapperController(IAssemblyImage assemblyImage)
+        {
+            return (ManagedClassInstance) assemblyImage["WrapperController"]["<Instance>k__BackingField"];
+        }
+
+        private ManagedClassInstance GetInventoryServiceWrapper(IAssemblyImage assemblyImage)
+        {
+            return (ManagedClassInstance) GetWrapperController(assemblyImage)["<InventoryManager>k__BackingField"]["InventoryServiceWrapper"];
+        }
+
+        private ManagedClassInstance GetMatchManager(IAssemblyImage assemblyImage)
+        {
+            return (ManagedClassInstance) GetPAPAInstance(assemblyImage)["_matchManager"];
+        }
+
+        private ManagedClassInstance GetPAPAInstance(IAssemblyImage assemblyImage)
+        {
+            return (ManagedClassInstance) assemblyImage["PAPA"]["_instance"];
+        }
+
         private string GetConnectionString(IAssemblyImage assemblyImage)
         {
-            var dbConnection = assemblyImage["WrapperController"]["<Instance>k__BackingField"]["<CardDatabase>k__BackingField"]["<CardDataProvider>k__BackingField"]["_baseCardDataProvider"]["_dbConnection"];
+            var dbConnection = GetWrapperController(assemblyImage)["<CardDatabase>k__BackingField"]["<CardDataProvider>k__BackingField"]["_baseCardDataProvider"]["_dbConnection"];
             return dbConnection["_connectionString"];
         }
 

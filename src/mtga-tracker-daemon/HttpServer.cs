@@ -423,15 +423,24 @@ namespace MTGATrackerDaemon
 
             if (!File.Exists(dataPath) && RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
+                // Proton stores a Windows path like D:\steamapps\common\MTGA\... which becomes
+                // /steamapps/common/... after drive-letter stripping. Walk up from MTGA.exe until
+                // we hit the Steam library root that contains that relative path.
                 string gameExecutablePath = GetGameExecutablePath();
                 if (gameExecutablePath != null)
                 {
-                    string gameDir = Path.GetDirectoryName(gameExecutablePath);
-                    string steamAppsPath = Directory.GetParent(Directory.GetParent(gameDir).FullName).FullName;
-                    string resolvedPath = Path.Combine(steamAppsPath, dataPath.TrimStart('/'));
-                    if (File.Exists(resolvedPath))
+                    string relativePath = dataPath.TrimStart('/');
+                    string directory = Path.GetDirectoryName(gameExecutablePath);
+                    while (directory != null)
                     {
-                        dataPath = resolvedPath;
+                        string resolvedPath = Path.Combine(directory, relativePath);
+                        if (File.Exists(resolvedPath))
+                        {
+                            dataPath = resolvedPath;
+                            break;
+                        }
+
+                        directory = Directory.GetParent(directory)?.FullName;
                     }
                 }
             }

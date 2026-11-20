@@ -74,10 +74,10 @@
                     // return this.ReadBufferValue(address, sizeof(char), ConversionUtils.ToUInt64);
 
                 case TypeCode.R4:
-                    return this.ReadBufferValue(address, sizeof(char), ConversionUtils.ToSingle);
+                    return this.ReadBufferValue(address, sizeof(float), ConversionUtils.ToSingle);
 
                 case TypeCode.R8:
-                    return this.ReadBufferValue(address, sizeof(char), ConversionUtils.ToDouble);
+                    return this.ReadBufferValue(address, sizeof(double), ConversionUtils.ToDouble);
 
                 case TypeCode.STRING:
                     return this.ReadManagedString(address);
@@ -317,8 +317,10 @@
                     return sizeof(ulong);
 
                 case TypeCode.R4:
+                    return sizeof(float);
+
                 case TypeCode.R8:
-                    return sizeof(char);
+                    return sizeof(double);
 
                 case TypeCode.STRING:
                 case TypeCode.SZARRAY:
